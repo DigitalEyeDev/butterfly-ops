@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Coffee, LogOut, ArrowRight } from "lucide-react";
+import { Play, Coffee, LogOut, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ClockActionFlow } from "@/components/attendance/ClockActionFlow";
-import { computeShiftSummary, formatClockTime, formatMinutes } from "@/lib/attendance";
+import { computeShiftSummary, formatAttendanceDate, formatClockTime, formatMinutes } from "@/lib/attendance";
 import type { AttendanceEventType, AttendanceRecord, Branch } from "@/lib/types";
 
 function useCountdown(targetMs: number | null) {
@@ -91,29 +91,68 @@ export function TodayStatusCard({
       </>
     );
   } else if (record) {
-    // CLOCKED_OUT — reuse the same computeShiftSummary the manager/owner
-    // views use (see lib/attendance.ts), rather than a second inline
-    // calculation that could silently drift from it (e.g. it previously
-    // showed "0m" instead of an honest "—" for a manager-adjusted record
-    // with no real clock-out event).
+    // CLOCKED_OUT — no "Shift completed / Net time" summary here. Instead
+    // show the actual recorded clock-in/lunch/clock-out times for this
+    // date, the same real, event-sourced values History uses (via the
+    // shared computeShiftSummary in lib/attendance.ts) — never a bare
+    // duration figure that could be mistaken for a live session timer.
     const summary = computeShiftSummary(record, events, new Date().toISOString());
+    const lunchExceeded = summary.lunchOverageMinutes > 0;
     body = (
       <>
-        <p className="text-lg font-semibold">Shift completed</p>
-        <p className="mt-1 text-xs uppercase tracking-wide text-muted">Net time</p>
-        <p className="text-3xl font-bold tabular-nums">{formatMinutes(summary.netMinutes)}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {formatAttendanceDate(record.attendance_date)}
+        </p>
+        <p className="mt-1 flex items-center justify-center gap-1.5 text-lg font-semibold">
+          {lunchExceeded ? (
+            <span className="inline-flex items-center gap-1.5 text-warning">
+              <AlertTriangle className="h-4 w-4" /> Lunch exceeded
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-success">
+              <CheckCircle2 className="h-4 w-4" /> Present
+            </span>
+          )}
+        </p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+          <Field label="Clock in" value={formatClockTime(summary.clockIn?.event_timestamp)} />
+          <Field
+            label="Lunch"
+            value={
+              summary.lunchStart
+                ? `${formatClockTime(summary.lunchStart.event_timestamp)}–${formatClockTime(summary.lunchEnd?.event_timestamp)}`
+                : "—"
+            }
+          />
+          <Field label="Clock out" value={formatClockTime(summary.clockOut?.event_timestamp)} />
+        </div>
       </>
     );
   }
 
+  // The "Today" eyebrow only makes sense while today's shift is still
+  // ahead of or in progress — once it's complete the card's own date
+  // label (above) already identifies which day this is, so it isn't
+  // repeated here.
+  const showTodayEyebrow = !record || record.status !== "CLOCKED_OUT";
+
   return (
     <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6 text-center shadow-[var(--shadow-card)]">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Today</p>
+      {showTodayEyebrow && <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Today</p>}
       {body}
 
       {activeFlow && (
         <ClockActionFlow eventType={activeFlow} open={!!activeFlow} onClose={close} branch={branch} />
       )}
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-0.5 font-medium tabular-nums">{value}</p>
     </div>
   );
 }
