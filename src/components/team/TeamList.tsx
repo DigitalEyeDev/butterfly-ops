@@ -6,12 +6,23 @@ import { Avatar } from "@/components/ui/Avatar";
 import { IconButton } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { AccountStatusBadge } from "@/components/ui/Badge";
+import { AccountStatusBadge, CategoryTag } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { setTeamMemberActive, removeTeamMember } from "@/lib/actions/users";
 import type { Profile } from "@/lib/types";
 
-export function TeamList({ team, currentUserId }: { team: Profile[]; currentUserId: string }) {
+export function TeamList({
+  team,
+  currentUserId,
+  canManageMembers = true,
+}: {
+  team: Profile[];
+  currentUserId: string;
+  /** Owner can view Team but only a manager can create/deactivate/remove
+   * people — hides the per-row actions dropdown for a view-only viewer
+   * (the underlying server actions also enforce this independently). */
+  canManageMembers?: boolean;
+}) {
   const { success, error } = useToast();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Profile | null>(null);
@@ -57,6 +68,8 @@ export function TeamList({ team, currentUserId }: { team: Profile[]; currentUser
                   <p className={cnTruncate(isRemoved)}>{member.full_name}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="text-xs capitalize text-muted">{member.role}</span>
+                    {member.department?.name && <span className="text-xs text-border">·</span>}
+                    <CategoryTag name={member.department?.name} />
                     <AccountStatusBadge status={member.status} />
                   </div>
                   {isRemoved && (
@@ -67,7 +80,7 @@ export function TeamList({ team, currentUserId }: { team: Profile[]; currentUser
                 </div>
               </div>
 
-              {!isSelf && !isRemoved && (
+              {canManageMembers && !isSelf && !isRemoved && (
                 <Dropdown
                   trigger={
                     <IconButton label={`Actions for ${member.full_name}`} variant="outline" size="sm">

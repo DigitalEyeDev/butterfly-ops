@@ -1,6 +1,20 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { AttendanceAdjustment, AttendanceEvent, AttendanceRecord, Branch, Category, Evidence, Profile, Task, TaskUpdate } from "@/lib/types";
+import type {
+  AttendanceAdjustment,
+  AttendanceEvent,
+  AttendanceRecord,
+  Branch,
+  Category,
+  Department,
+  Evidence,
+  Profile,
+  ReceptionReport,
+  ReceptionReportUpdate,
+  ReceptionReviewEvidence,
+  Task,
+  TaskUpdate,
+} from "@/lib/types";
 import { todayInParkTZ } from "@/lib/attendance";
 
 const TASK_SELECT = `
@@ -35,7 +49,23 @@ export async function getStaff(branchId: string): Promise<Profile[]> {
 
 export async function getAllTeam(branchId: string): Promise<Profile[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("*").eq("branch_id", branchId).order("full_name");
+  const { data } = await supabase
+    .from("profiles")
+    .select("*, department:departments(id, branch_id, name, description, is_active)")
+    .eq("branch_id", branchId)
+    .order("full_name");
+  return (data as unknown as Profile[]) ?? [];
+}
+
+/** Departments are organizational grouping only — see supabase/departments.sql.
+ * `activeOnly` defaults to true for assignment pickers; the Team page's own
+ * management view passes false so a deactivated department still shows up
+ * to be reactivated. */
+export async function getDepartments(branchId: string, activeOnly = true): Promise<Department[]> {
+  const supabase = await createClient();
+  let query = supabase.from("departments").select("*").eq("branch_id", branchId);
+  if (activeOnly) query = query.eq("is_active", true);
+  const { data } = await query.order("name");
   return data ?? [];
 }
 
@@ -316,4 +346,79 @@ export async function getAttendanceAdjustments(recordId: string): Promise<Attend
     .eq("attendance_record_id", recordId)
     .order("created_at", { ascending: false });
   return (data as unknown as AttendanceAdjustment[]) ?? [];
+}
+
+// =========================================================================
+// Reception Operations — one report per branch per calendar day (see
+// supabase/reception.sql). `todayInParkTZ()` is the same Asia/Kolkata date
+// function the attendance module uses, so "today" never drifts between
+// the two modules.
+// =========================================================================
+
+const RECEPTION_REPORT_SELECT = `
+  *,
+  creator:profiles!reception_reports_created_by_fkey(id, branch_id, full_name, role, is_active),
+  submitter:profiles!reception_reports_submitted_by_fkey(id, branch_id, full_name, role, is_active),
+  reviewer:profiles!reception_reports_reviewed_by_fkey(id, branch_id, full_name, role, is_active)
+`;
+
+async function withReceptionDetail(supabase: Awaited<ReturnType<typeof createClient>>, report: ReceptionReport): Promise<ReceptionReport> {
+  const [{ data: evidenceRows }, { data: updateRows }] = await Promise.all([
+    supabase.from("reception_review_evidence").select("*").eq("report_id", report.id).order("created_at"),
+    supabase
+      .from("reception_report_updates")
+      .select("*, actor:profiles(id, branch_id, full_name, role, is_active)")
+      .eq("report_id", report.id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const evidence = await Promise.all(
+    ((evidenceRows as ReceptionReviewEvidence[]) ?? []).map(async (row) => {
+      const { data: signed } = await supabase.storage.from("reception-evidence").createSignedUrl(row.file_path, 3600);
+      return { ...row, url: signed?.signedUrl };
+    })
+  );
+
+  return { ...report, evidence, updates: (updateRows as unknown as ReceptionReportUpdate[]) ?? [] };
+}
+
+/** Today's report for the branch, with evidence (signed URLs) and full
+ * history — or null if nobody has started one yet today. */
+export async function getTodayReceptionReport(branchId: string): Promise<ReceptionReport | null> {
+  const supabase = await createClient();
+  const { data: report } = await supabase
+    .from("reception_reports")
+    .select(RECEPTION_REPORT_SELECT)
+    .eq("branch_id", branchId)
+    .eq("business_date", todayInParkTZ())
+    .maybeSingle();
+
+  if (!report) return null;
+  return withReceptionDetail(supabase, report as unknown as ReceptionReport);
+}
+
+export async function getReceptionReportById(reportId: string): Promise<ReceptionReport | null> {
+  const supabase = await createClient();
+  const { data: report } = await supabase
+    .from("reception_reports")
+    .select(RECEPTION_REPORT_SELECT)
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (!report) return null;
+  return withReceptionDetail(supabase, report as unknown as ReceptionReport);
+}
+
+/** Past reports for the branch (today excluded via the page's own filtering
+ * where relevant) — a plain list, no per-row evidence/history fetch, so this
+ * stays cheap for a history view. */
+export async function getReceptionHistory(branchId: string, limit = 30): Promise<ReceptionReport[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("reception_reports")
+    .select(RECEPTION_REPORT_SELECT)
+    .eq("branch_id", branchId)
+    .order("business_date", { ascending: false })
+    .limit(limit);
+  return (data as unknown as ReceptionReport[]) ?? [];
 }

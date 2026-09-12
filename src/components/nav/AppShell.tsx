@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListChecks, Users, Upload, LogOut, ClipboardList, UserCircle, Clock } from "lucide-react";
+import { LayoutDashboard, ListChecks, Users, Upload, LogOut, ClipboardList, UserCircle, Clock, Ticket } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { Avatar } from "@/components/ui/Avatar";
 import { LogoBadge, Wordmark } from "@/components/brand/Logo";
@@ -21,6 +21,7 @@ function navFor(role: Profile["role"]): NavItem[] {
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/tasks", label: "Tasks", icon: ListChecks },
       { href: "/attendance", label: "Attendance", icon: Clock },
+      { href: "/reception", label: "Reception", icon: Ticket },
       { href: "/import", label: "Import", icon: Upload },
       { href: "/team", label: "Team", icon: Users },
     ];
@@ -30,7 +31,17 @@ function navFor(role: Profile["role"]): NavItem[] {
       { href: "/owner", label: "Home", icon: LayoutDashboard },
       { href: "/tasks", label: "All tasks", icon: ListChecks },
       { href: "/attendance", label: "Attendance", icon: Clock },
+      { href: "/reception", label: "Reception", icon: Ticket },
+      { href: "/team", label: "Team", icon: Users },
     ];
+  }
+  if (role === "receptionist") {
+    // Deliberately just one working screen — the receptionist's whole job
+    // here is filing the daily report, so /reception doubles as both their
+    // "Home" and their "Reception" area rather than splitting into two
+    // near-identical screens (see the plan's reasoning: "should not need
+    // to navigate through complicated screens").
+    return [{ href: "/reception", label: "Reception", icon: Ticket }];
   }
   return [
     { href: "/my-tasks", label: "My tasks", icon: ClipboardList },

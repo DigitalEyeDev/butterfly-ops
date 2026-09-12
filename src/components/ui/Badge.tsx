@@ -2,8 +2,10 @@ import { cn } from "@/lib/utils";
 import {
   ACCOUNT_STATUS_LABELS,
   PRIORITY_LABELS,
+  RECEPTION_STATUS_LABELS,
   STATUS_LABELS,
   type AccountStatus,
+  type ReceptionReportStatus,
   type TaskPriority,
   type TaskStatus,
 } from "@/lib/types";
@@ -81,6 +83,28 @@ export function AccountStatusBadge({ status, className }: { status: AccountStatu
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {ACCOUNT_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+const receptionStatusTone: Record<ReceptionReportStatus, string> = {
+  DRAFT: "bg-neutral-soft text-neutral",
+  SUBMITTED: "bg-info-soft text-info",
+  CORRECTION_REQUESTED: "bg-warning-soft text-warning",
+  VERIFIED: "bg-success-soft text-success",
+};
+
+export function ReceptionStatusBadge({ status, className }: { status: ReceptionReportStatus; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide",
+        receptionStatusTone[status],
+        className
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {RECEPTION_STATUS_LABELS[status]}
     </span>
   );
 }

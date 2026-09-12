@@ -23,6 +23,7 @@ export async function createTeamMember(formData: FormData): Promise<ActionResult
     email: String(formData.get("email") ?? ""),
     role: String(formData.get("role") ?? "staff"),
     password: String(formData.get("password") ?? ""),
+    department_id: String(formData.get("department_id") ?? ""),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
@@ -48,6 +49,7 @@ export async function createTeamMember(formData: FormData): Promise<ActionResult
     branch_id: manager.branch_id,
     full_name: v.full_name,
     role: v.role,
+    department_id: v.department_id || null,
     is_active: true,
     status: "ACTIVE",
   });

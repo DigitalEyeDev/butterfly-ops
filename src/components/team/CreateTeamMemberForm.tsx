@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Input, Select, Label, FieldGroup, FieldError } from "@/components/ui/Field";
 import { createTeamMember } from "@/lib/actions/users";
+import type { Department } from "@/lib/types";
 
 function randomPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -14,7 +15,7 @@ function randomPassword() {
   return out;
 }
 
-export function CreateTeamMemberForm({ onSuccess }: { onSuccess: () => void }) {
+export function CreateTeamMemberForm({ departments, onSuccess }: { departments: Department[]; onSuccess: () => void }) {
   const { success, error } = useToast();
   const [pending, setPending] = useState(false);
   const [fieldError, setFieldError] = useState<string | undefined>();
@@ -61,9 +62,22 @@ export function CreateTeamMemberForm({ onSuccess }: { onSuccess: () => void }) {
         </Label>
         <Select id="role" name="role" defaultValue="staff">
           <option value="staff">Staff</option>
+          <option value="receptionist">Receptionist</option>
           <option value="manager">Manager</option>
           <option value="owner">Owner</option>
         </Select>
+      </FieldGroup>
+      <FieldGroup>
+        <Label htmlFor="department_id">Department</Label>
+        <Select id="department_id" name="department_id" defaultValue="">
+          <option value="">No department</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </Select>
+        <p className="mt-1.5 text-xs text-muted">Organizational grouping only — access is controlled by role.</p>
       </FieldGroup>
       <FieldGroup>
         <Label htmlFor="password" required>

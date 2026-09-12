@@ -48,5 +48,7 @@ export function homeForRole(role: UserRole): string {
       return "/owner";
     case "staff":
       return "/my-tasks";
+    case "receptionist":
+      return "/reception";
   }
 }

@@ -30,12 +30,42 @@ export type TaskFormValues = z.infer<typeof taskFormSchema>;
 export const createUserSchema = z.object({
   full_name: z.string().trim().min(1, "Name is required").max(120),
   email: z.string().trim().email("Enter a valid email address"),
-  role: z.enum(["manager", "staff", "owner"]),
+  role: z.enum(["manager", "staff", "owner", "receptionist"]),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  department_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 export const remarkSchema = z.object({
   remark: z.string().trim().min(1, "Remark can't be empty").max(2000),
+});
+
+export const departmentFormSchema = z.object({
+  name: z.string().trim().min(1, "Department name is required").max(80),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+// Every count is optional at draft time (a partially-filled report is a
+// valid draft) but, when present, must be a non-negative integer — the
+// submit RPC is what actually requires all four before locking the report.
+const nonNegativeCount = z.coerce
+  .number()
+  .int("Enter a whole number")
+  .min(0, "Cannot be negative")
+  .optional();
+
+// business_date is deliberately not a field here — like attendance, "today"
+// is always derived server-side (see save_reception_draft in
+// supabase/reception.sql), never taken from the client/device clock.
+export const receptionDraftSchema = z.object({
+  visitors_count: nonNegativeCount,
+  tickets_sold: nonNegativeCount,
+  socks_sold: nonNegativeCount,
+  review_count: nonNegativeCount,
+  remarks: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const correctionReasonSchema = z.object({
+  reason: z.string().trim().min(3, "Explain what needs to be corrected").max(1000),
 });
 
 export const attendanceSettingsSchema = z.object({

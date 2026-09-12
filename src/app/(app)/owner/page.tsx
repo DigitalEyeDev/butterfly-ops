@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
-import { getTasks, computeMetrics } from "@/lib/queries";
+import { getTasks, computeMetrics, getTodayReceptionReport } from "@/lib/queries";
 import { MetricGrid } from "@/components/dashboard/MetricGrid";
 import { ApprovalRow } from "@/components/tasks/ApprovalRow";
 import { TaskList } from "@/components/tasks/TaskList";
 import { EmptyState } from "@/components/ui/States";
+import { ReceptionSummaryCard } from "@/components/reception/ReceptionSummaryCard";
 import { isOverdue } from "@/lib/utils";
-import { PartyPopper } from "lucide-react";
+import { PartyPopper, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerDashboardPage() {
   const owner = await requireRole("owner");
-  const tasks = await getTasks(owner.branch_id);
+  const [tasks, reception] = await Promise.all([getTasks(owner.branch_id), getTodayReceptionReport(owner.branch_id)]);
   const metrics = computeMetrics(tasks);
 
   const needsApproval = tasks
@@ -34,6 +35,16 @@ export default async function OwnerDashboardPage() {
         <h1 className="font-display text-2xl font-bold tracking-tight">BUTTERFLY OPS</h1>
         <p className="text-sm font-medium uppercase tracking-wide text-muted">Bhubaneswar · Park operations</p>
       </header>
+
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Today at Butterfly</h2>
+          <Link href="/reception" className="flex items-center text-sm font-medium text-brand hover:underline">
+            Reception <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <ReceptionSummaryCard report={reception} condensed />
+      </section>
 
       <section className="mb-8">
         <MetricGrid metrics={metrics} base="/tasks" show={["total", "completed", "inProgress", "overdue", "awaitingApproval"]} />

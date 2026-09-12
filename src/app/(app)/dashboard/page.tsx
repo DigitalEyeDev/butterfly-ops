@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
-import { getTasks, computeMetrics, getCategories, getStaff, getRecentActivity } from "@/lib/queries";
+import { getTasks, computeMetrics, getCategories, getStaff, getRecentActivity, getTodayReceptionReport } from "@/lib/queries";
 import { MetricGrid } from "@/components/dashboard/MetricGrid";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { TaskList } from "@/components/tasks/TaskList";
 import { AddTaskFab } from "@/components/tasks/AddTaskFab";
+import { ReceptionSummaryCard } from "@/components/reception/ReceptionSummaryCard";
 import { greeting, formatDate, isOverdue } from "@/lib/utils";
 import type { Task, TaskUpdate } from "@/lib/types";
 
@@ -17,11 +19,12 @@ function priorityRank(p: Task["priority"]) {
 export default async function DashboardPage() {
   const manager = await requireRole("manager");
 
-  const [tasks, categories, staff, activity] = await Promise.all([
+  const [tasks, categories, staff, activity, reception] = await Promise.all([
     getTasks(manager.branch_id),
     getCategories(manager.branch_id),
     getStaff(manager.branch_id),
     getRecentActivity(manager.branch_id),
+    getTodayReceptionReport(manager.branch_id),
   ]);
 
   const metrics = computeMetrics(tasks);
@@ -48,6 +51,16 @@ export default async function DashboardPage() {
 
       <section className="mb-8">
         <MetricGrid metrics={metrics} />
+      </section>
+
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Reception</h2>
+          <Link href="/reception" className="flex items-center text-sm font-medium text-brand hover:underline">
+            View <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <ReceptionSummaryCard report={reception} />
       </section>
 
       <section className="mb-8">

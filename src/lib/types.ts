@@ -1,7 +1,7 @@
 // Shared domain types — kept in one place so the UI, validation, and
 // database enums never drift apart.
 
-export type UserRole = "manager" | "staff" | "owner";
+export type UserRole = "manager" | "staff" | "owner" | "receptionist";
 
 export const TASK_STATUSES = [
   "NOT_STARTED",
@@ -53,6 +53,14 @@ export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
   REMOVED: "Removed",
 };
 
+export interface Department {
+  id: string;
+  branch_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
 export interface Profile {
   id: string;
   branch_id: string;
@@ -62,6 +70,8 @@ export interface Profile {
   status: AccountStatus;
   removed_at?: string | null;
   email?: string;
+  department_id?: string | null;
+  department?: Department | null;
 }
 
 export interface Category {
@@ -216,4 +226,72 @@ export interface AttendanceAdjustment {
   new_status: AttendanceRecordStatus | null;
   created_at: string;
   performer?: Profile | null;
+}
+
+// =========================================================================
+// Reception Operations
+// =========================================================================
+
+// One report per branch per calendar day — not per receptionist — since
+// the front desk reports one set of park-wide numbers per day regardless
+// of who's on shift (see supabase/reception.sql).
+export const RECEPTION_REPORT_STATUSES = ["DRAFT", "SUBMITTED", "CORRECTION_REQUESTED", "VERIFIED"] as const;
+export type ReceptionReportStatus = (typeof RECEPTION_REPORT_STATUSES)[number];
+
+export const RECEPTION_STATUS_LABELS: Record<ReceptionReportStatus, string> = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  CORRECTION_REQUESTED: "Correction requested",
+  VERIFIED: "Verified",
+};
+
+export interface ReceptionReport {
+  id: string;
+  branch_id: string;
+  business_date: string;
+  status: ReceptionReportStatus;
+  visitors_count: number | null;
+  tickets_sold: number | null;
+  socks_sold: number | null;
+  review_count: number | null;
+  remarks: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  correction_reason: string | null;
+  // joined fields
+  creator?: Profile | null;
+  submitter?: Profile | null;
+  reviewer?: Profile | null;
+  evidence?: ReceptionReviewEvidence[];
+  updates?: ReceptionReportUpdate[];
+}
+
+export interface ReceptionReportUpdate {
+  id: string;
+  report_id: string;
+  actor_id: string | null;
+  action: string;
+  field: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  remark: string | null;
+  created_at: string;
+  actor?: Profile | null;
+}
+
+export interface ReceptionReviewEvidence {
+  id: string;
+  report_id: string;
+  uploaded_by: string | null;
+  file_path: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
+  url?: string;
 }

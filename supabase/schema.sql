@@ -14,8 +14,11 @@ create extension if not exists "pgcrypto";
 -- Enums (controlled vocabularies — the whole point of normalizing Excel)
 -- ---------------------------------------------------------------------
 do $$ begin
-  create type user_role as enum ('manager', 'staff', 'owner');
+  create type user_role as enum ('manager', 'staff', 'owner', 'receptionist');
 exception when duplicate_object then null; end $$;
+-- Idempotent for a database that already had `user_role` without
+-- 'receptionist' (added later — see supabase/reception.sql's history).
+alter type user_role add value if not exists 'receptionist';
 
 do $$ begin
   create type task_status as enum (
