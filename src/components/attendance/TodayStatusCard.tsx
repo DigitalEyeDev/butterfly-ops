@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Play, Coffee, LogOut, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ClockActionFlow } from "@/components/attendance/ClockActionFlow";
-import { formatClockTime, formatMinutes } from "@/lib/attendance";
+import { computeShiftSummary, formatClockTime, formatMinutes } from "@/lib/attendance";
 import type { AttendanceEventType, AttendanceRecord, Branch } from "@/lib/types";
 
 function useCountdown(targetMs: number | null) {
@@ -90,18 +90,18 @@ export function TodayStatusCard({
         </Button>
       </>
     );
-  } else {
-    // CLOCKED_OUT
-    const shiftMs =
-      clockIn && clockOut ? new Date(clockOut.event_timestamp).getTime() - new Date(clockIn.event_timestamp).getTime() : 0;
-    const lunchMs =
-      lunchStart && lunchEnd ? new Date(lunchEnd.event_timestamp).getTime() - new Date(lunchStart.event_timestamp).getTime() : 0;
-    const netMinutes = shiftMs / 60000 - lunchMs / 60000;
+  } else if (record) {
+    // CLOCKED_OUT — reuse the same computeShiftSummary the manager/owner
+    // views use (see lib/attendance.ts), rather than a second inline
+    // calculation that could silently drift from it (e.g. it previously
+    // showed "0m" instead of an honest "—" for a manager-adjusted record
+    // with no real clock-out event).
+    const summary = computeShiftSummary(record, events, new Date().toISOString());
     body = (
       <>
         <p className="text-lg font-semibold">Shift completed</p>
         <p className="mt-1 text-xs uppercase tracking-wide text-muted">Net time</p>
-        <p className="text-3xl font-bold tabular-nums">{formatMinutes(netMinutes)}</p>
+        <p className="text-3xl font-bold tabular-nums">{formatMinutes(summary.netMinutes)}</p>
       </>
     );
   }

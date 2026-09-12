@@ -112,6 +112,7 @@ create table if not exists attendance_adjustments (
 );
 
 create index if not exists attendance_adjustments_record_idx on attendance_adjustments (attendance_record_id);
+create index if not exists attendance_adjustments_performed_by_idx on attendance_adjustments (performed_by);
 
 -- =========================================================================
 -- Haversine great-circle distance in meters — the standard formula for

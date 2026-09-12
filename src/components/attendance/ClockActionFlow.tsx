@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, MapPin, RotateCcw, ShieldAlert, Loader2, Upload } from "lucide-react";
+import { Camera, CheckCircle2, MapPin, RotateCcw, ShieldAlert, Loader2, Upload, AlertTriangle } from "lucide-react";
 import { Overlay } from "@/components/ui/Overlay";
 import { Button } from "@/components/ui/Button";
 import { recordAttendanceEvent } from "@/lib/actions/attendance";
@@ -215,7 +215,7 @@ export function ClockActionFlow({
                   <RotateCcw className="h-4 w-4" /> Retake
                 </Button>
                 <Button fullWidth onClick={() => setStep("location")}>
-                  Continue
+                  Use photo
                 </Button>
               </div>
             </>
@@ -247,27 +247,32 @@ export function ClockActionFlow({
                 {(cameraStatus === "denied" || cameraStatus === "unavailable") && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center text-white/90">
                     <ShieldAlert className="h-7 w-7" />
-                    <p className="text-xs">
-                      {cameraStatus === "denied" ? "Camera permission denied" : "Camera unavailable on this device"}
+                    <p className="text-sm font-semibold">
+                      {cameraStatus === "denied" ? "Camera access needed" : "Camera unavailable"}
                     </p>
                   </div>
                 )}
               </div>
 
               {cameraStatus === "ready" && (
-                <Button fullWidth size="lg" onClick={handleCapture}>
-                  <Camera className="h-4 w-4" /> Capture
-                </Button>
+                <>
+                  <p className="text-sm font-medium text-foreground">Position your face inside the frame</p>
+                  <Button fullWidth size="lg" onClick={handleCapture}>
+                    <Camera className="h-4 w-4" /> Capture selfie
+                  </Button>
+                </>
               )}
 
               {(cameraStatus === "denied" || cameraStatus === "unavailable") && (
                 <div className="flex w-full flex-col gap-2">
-                  {cameraStatus === "denied" && (
-                    <p className="text-xs text-muted">Enable camera access for this site in your browser settings, then retry.</p>
-                  )}
+                  <p className="text-xs text-muted">
+                    {cameraStatus === "denied"
+                      ? "Camera access is required to verify attendance. Enable it for this site in your browser settings, then retry."
+                      : "This device's camera couldn't be reached. You can still attach a photo instead."}
+                  </p>
                   <div className="flex gap-2">
                     <Button variant="outline" fullWidth onClick={retryCamera}>
-                      <RotateCcw className="h-4 w-4" /> Retry camera
+                      <RotateCcw className="h-4 w-4" /> Try again
                     </Button>
                     <Button fullWidth onClick={() => fileInputRef.current?.click()}>
                       <Upload className="h-4 w-4" /> Upload instead
@@ -430,10 +435,18 @@ function Row({
   ok?: boolean;
   icon?: typeof MapPin;
 }) {
+  // A checkmark/warning icon carries the status independent of color —
+  // not everyone can rely on the green/amber text alone to tell the two
+  // apart.
+  const StatusIcon = ok === false ? AlertTriangle : ok === true ? CheckCircle2 : null;
   return (
     <div className="flex items-center justify-between">
       <span className="inline-flex items-center gap-1.5 text-muted">
-        {Icon && <Icon className="h-3.5 w-3.5" />}
+        {StatusIcon ? (
+          <StatusIcon className={cn("h-3.5 w-3.5", ok ? "text-success" : "text-warning")} aria-hidden />
+        ) : (
+          Icon && <Icon className="h-3.5 w-3.5" />
+        )}
         {label}
       </span>
       <span className={ok === false ? "font-medium text-warning" : ok === true ? "font-medium text-success" : "font-medium text-foreground"}>

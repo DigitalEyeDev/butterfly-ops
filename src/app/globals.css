@@ -262,7 +262,9 @@ textarea {
   .animate-blob-drift,
   .animate-sheet-up,
   .animate-fade-in,
-  .animate-toast-in {
+  .animate-toast-in,
+  .animate-ping,
+  .animate-pulse {
     animation: none !important;
   }
 }
